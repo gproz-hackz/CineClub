@@ -1,0 +1,64 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+  SUPER_ADMIN
+  OWNER
+}
+
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  passwordHash  String?   // Nullable for OAuth users
+  googleId      String?   @unique
+  role          Role      @default(USER)
+  isVerified    Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  
+  watchlist     Watchlist[]
+  activityLogs  ActivityLog[]
+}
+
+model Movie {
+  id          String   @id @default(uuid())
+  tmdbId      Int      @unique
+  title       String
+  slug        String
+  year        Int
+  posterPath  String?
+  genres      String[]
+  popularity  Float
+  
+  // Download Links stored as JSON
+  downloads   Json     // e.g., [{"quality": "1080p", "url": "..."}]
+  
+  createdAt   DateTime @default(now())
+}
+
+model ActivityLog {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  action    String   // "VIEW", "SEARCH", "DOWNLOAD"
+  metadata  Json?    // { movieId: "...", term: "Batman" }
+  createdAt DateTime @default(now())
+}
+
+model Watchlist {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  mediaId   Int      // TMDb ID
+  mediaType String   // "MOVIE" or "SERIES"
+  addedAt   DateTime @default(now())
+
+  @@unique([userId, mediaId, mediaType])
+}
