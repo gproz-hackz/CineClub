@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  # 🗄️ Database
+  postgres:
+    image: postgres:15-alpine
+    restart: always
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASS}
+      POSTGRES_DB: stream_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  # ⚡ Cache & Queues
+  redis:
+    image: redis:7-alpine
+    restart: always
+    ports:
+      - "6379:6379"
+
+  # 🔍 Search Engine
+  meilisearch:
+    image: getmeili/meilisearch:v1.3
+    environment:
+      MEILI_MASTER_KEY: ${MEILI_MASTER_KEY}
+    ports:
+      - "7700:7700"
+    volumes:
+      - meili_data:/meili_data
+
+  # 🧠 Backend API
+  backend:
+    build: ./apps/backend
+    restart: always
+    depends_on:
+      - postgres
+      - redis
+      - meilisearch
+    env_file: .env
+    ports:
+      - "4000:4000"
+
+  # 🖥️ Public Frontend
+  frontend:
+    build: ./apps/frontend
+    restart: always
+    depends_on:
+      - backend
+    env_file: .env
+    ports:
+      - "3000:3000"
+
+volumes:
+  pgdata:
+  meili_data:
